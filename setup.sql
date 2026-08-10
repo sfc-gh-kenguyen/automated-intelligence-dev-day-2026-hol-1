@@ -790,36 +790,6 @@ USE SCHEMA dash_automated_intelligence_db.raw;
 ALTER TABLE orders SET DATA_METRIC_SCHEDULE = 'TRIGGER_ON_CHANGES';
 ALTER TABLE order_items SET DATA_METRIC_SCHEDULE = 'TRIGGER_ON_CHANGES';
 
--- ============================================================================
--- Inject Data Quality Issues (intentional NULLs for DMF demo)
--- Purpose: ~200 NULL values in monitored columns so DMFs detect violations
--- ============================================================================
-
-CREATE OR REPLACE TEMPORARY TABLE dash_automated_intelligence_db.raw.dq_bad_orders AS
-SELECT order_id FROM dash_automated_intelligence_db.raw.orders SAMPLE (200 ROWS);
-
-UPDATE dash_automated_intelligence_db.raw.orders o
-SET total_amount = NULL
-FROM dash_automated_intelligence_db.raw.dq_bad_orders b
-WHERE o.order_id = b.order_id;
-
-CREATE OR REPLACE TEMPORARY TABLE dash_automated_intelligence_db.raw.dq_bad_items AS
-SELECT order_item_id FROM dash_automated_intelligence_db.raw.order_items SAMPLE (200 ROWS);
-
-UPDATE dash_automated_intelligence_db.raw.order_items oi
-SET quantity = NULL
-FROM dash_automated_intelligence_db.raw.dq_bad_items b
-WHERE oi.order_item_id = b.order_item_id;
-
--- Also inject NULLs into product_name (NOT monitored by DMF — intentional gap)
-CREATE OR REPLACE TEMPORARY TABLE dash_automated_intelligence_db.raw.dq_bad_items_names AS
-SELECT order_item_id FROM dash_automated_intelligence_db.raw.order_items SAMPLE (150 ROWS);
-
-UPDATE dash_automated_intelligence_db.raw.order_items oi
-SET product_name = NULL
-FROM dash_automated_intelligence_db.raw.dq_bad_items_names b
-WHERE oi.order_item_id = b.order_item_id;
-
 -- Add NULL_COUNT DMFs to orders table
 ALTER TABLE orders ADD DATA METRIC FUNCTION 
   SNOWFLAKE.CORE.NULL_COUNT ON (order_id),
@@ -1270,6 +1240,36 @@ FROM @dash_automated_intelligence_db.raw.hol_data_stage/
 FILE_FORMAT = (FORMAT_NAME = 'dash_automated_intelligence_db.raw.csv_format')
 PATTERN = '.*support_tickets\.csv'
 FORCE = TRUE;
+
+-- ============================================================================
+-- Inject Data Quality Issues (intentional NULLs for DMF demo)
+-- Purpose: ~200 NULL values in monitored columns so DMFs detect violations
+-- ============================================================================
+
+CREATE OR REPLACE TEMPORARY TABLE dash_automated_intelligence_db.raw.dq_bad_orders AS
+SELECT order_id FROM dash_automated_intelligence_db.raw.orders SAMPLE (200 ROWS);
+
+UPDATE dash_automated_intelligence_db.raw.orders o
+SET total_amount = NULL
+FROM dash_automated_intelligence_db.raw.dq_bad_orders b
+WHERE o.order_id = b.order_id;
+
+CREATE OR REPLACE TEMPORARY TABLE dash_automated_intelligence_db.raw.dq_bad_items AS
+SELECT order_item_id FROM dash_automated_intelligence_db.raw.order_items SAMPLE (200 ROWS);
+
+UPDATE dash_automated_intelligence_db.raw.order_items oi
+SET quantity = NULL
+FROM dash_automated_intelligence_db.raw.dq_bad_items b
+WHERE oi.order_item_id = b.order_item_id;
+
+-- Also inject NULLs into product_name (NOT monitored by DMF — intentional gap)
+CREATE OR REPLACE TEMPORARY TABLE dash_automated_intelligence_db.raw.dq_bad_items_names AS
+SELECT order_item_id FROM dash_automated_intelligence_db.raw.order_items SAMPLE (150 ROWS);
+
+UPDATE dash_automated_intelligence_db.raw.order_items oi
+SET product_name = NULL
+FROM dash_automated_intelligence_db.raw.dq_bad_items_names b
+WHERE oi.order_item_id = b.order_item_id;
 
 -- Fire the alert immediately so results are available by Section 7
 -- NOTE: EXECUTE ALERT queries vw_dq_monitoring_results, which relies on DMF measurements
